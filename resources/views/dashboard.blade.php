@@ -176,14 +176,18 @@
                             <h5 class="fw-bold mb-1"><i class="bi bi-boxes me-2"></i>Stock Inventory</h5>
                             <p class="text-muted mb-0 small">Real-time product catalog and available stock levels.</p>
                         </div>
-                        <div class="d-flex align-items-center gap-2">
-                            <label class="form-label mb-0 fw-semibold small text-nowrap">Low Stock Filter (<):</label>
-                            <input type="number" id="filterThreshold" class="form-control form-control-sm" style="width: 80px;" value="5" min="0">
+                        <div class="d-flex align-items-center gap-2 flex-wrap">
+                            <button class="btn btn-primary btn-sm px-3" data-bs-toggle="modal" data-bs-target="#addProductModal">
+                                <i class="bi bi-plus-circle me-1"></i> Add New Product
+                            </button>
+                            <div class="vr mx-1"></div>
+                            <label class="form-label mb-0 fw-semibold small text-nowrap">Low Stock (<):</label>
+                            <input type="number" id="filterThreshold" class="form-control form-control-sm" style="width: 75px;" value="5" min="0">
                             <button id="filterLowStockBtn" class="btn btn-sm btn-outline-warning text-dark text-nowrap">
                                 <i class="bi bi-filter"></i> Low Stock
                             </button>
                             <button id="resetInventoryBtn" class="btn btn-sm btn-outline-secondary text-nowrap">
-                                <i class="bi bi-arrow-clockwise"></i> Reset All
+                                <i class="bi bi-arrow-clockwise"></i> Reset
                             </button>
                         </div>
                     </div>
@@ -240,6 +244,55 @@
                     </div>
 
                     <div id="historyResultsContainer"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="addProductModal" tabindex="-1" aria-labelledby="addProductModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="addProductModalLabel">
+                        <i class="bi bi-box-seam me-2 text-primary"></i>Add New Product
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="productModalAlert" class="alert alert-danger d-none" role="alert"></div>
+                    <form id="newProductForm">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Product Name <span class="text-danger">*</span></label>
+                            <input type="text" id="newProdName" class="form-control" placeholder="e.g. Wireless Ergonomic Mouse" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Product Code (SKU) <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <input type="text" id="newProdCode" class="form-control" placeholder="e.g. PRD-WEM-011" required>
+                                <button type="button" class="btn btn-outline-secondary" id="autoGenCodeBtn">Generate</button>
+                            </div>
+                        </div>
+                        <div class="row g-2 mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Unit Price (₹) <span class="text-danger">*</span></label>
+                                <input type="number" id="newProdPrice" class="form-control" min="0" step="0.01" placeholder="e.g. 799.00" required>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Tax Percentage (%) <span class="text-danger">*</span></label>
+                                <input type="number" id="newProdTax" class="form-control" min="0" max="100" step="0.01" value="18.00" required>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Initial Stock Quantity <span class="text-danger">*</span></label>
+                            <input type="number" id="newProdStock" class="form-control" min="0" value="10" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary" id="saveProductBtn">
+                        <i class="bi bi-save me-1"></i> Save Product
+                    </button>
                 </div>
             </div>
         </div>
@@ -476,6 +529,78 @@
             } catch (e) {}
         }
 
+        document.getElementById('autoGenCodeBtn').addEventListener('click', () => {
+            const randomCode = 'PRD-' + Math.floor(10000 + Math.random() * 90000);
+            document.getElementById('newProdCode').value = randomCode;
+        });
+
+        document.getElementById('saveProductBtn').addEventListener('click', async () => {
+            const name = document.getElementById('newProdName').value.trim();
+            const code = document.getElementById('newProdCode').value.trim();
+            const price = document.getElementById('newProdPrice').value;
+            const tax = document.getElementById('newProdTax').value;
+            const stock = document.getElementById('newProdStock').value;
+            const modalAlert = document.getElementById('productModalAlert');
+
+            modalAlert.classList.add('d-none');
+            modalAlert.innerText = '';
+
+            if (!name || !code || price === '' || tax === '' || stock === '') {
+                modalAlert.innerText = 'Please fill out all required fields.';
+                modalAlert.classList.remove('d-none');
+                return;
+            }
+
+            const payload = {
+                name: name,
+                code: code,
+                price: parseFloat(price),
+                tax_percentage: parseFloat(tax),
+                stock_quantity: parseInt(stock, 10)
+            };
+
+            const saveBtn = document.getElementById('saveProductBtn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Saving...';
+
+            try {
+                const response = await fetch('/api/products', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify(payload)
+                });
+
+                const result = await response.json();
+
+                if (response.ok && result.success) {
+                    const modalEl = document.getElementById('addProductModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    document.getElementById('newProductForm').reset();
+                    showAlert(`Product "${result.data.name}" added successfully with ${result.data.stock_quantity} units!`, 'success');
+                    refreshInventoryData();
+                } else {
+                    let errMsg = result.message || 'Failed to save product.';
+                    if (result.errors) {
+                        const messages = Object.values(result.errors).flat();
+                        errMsg = messages.join(' ');
+                    }
+                    modalAlert.innerText = errMsg;
+                    modalAlert.classList.remove('d-none');
+                }
+            } catch (err) {
+                modalAlert.innerText = 'An error occurred while saving the product.';
+                modalAlert.classList.remove('d-none');
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="bi bi-save me-1"></i> Save Product';
+            }
+        });
+
         document.getElementById('filterLowStockBtn').addEventListener('click', async () => {
             const threshold = document.getElementById('filterThreshold').value || 5;
             try {
@@ -583,7 +708,7 @@
                     `;
 
                     order.order_items.forEach(item => {
-                        const prodName = item.product ? item.product.name : `Product #${item.product_id}`;
+                        const prodName = item.product ? item.product.name : `Product #${item.product_id}`;\
                         const prodCode = item.product ? `<code>${item.product.code}</code>` : '';
                         html += `
                             <tr>

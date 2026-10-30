@@ -443,7 +443,45 @@ Returns products whose current stock level is strictly less than the specified t
 
 ---
 
-### 4. Product Catalog Listing
+### 4. Create Product (Catalog & Inventory)
+Creates a new product with its SKU code, price, tax percentage, and initial store stock quantity.
+
+- **Method**: `POST`
+- **Endpoint**: `/api/products`
+- **Headers**: `Content-Type: application/json`, `Accept: application/json`
+
+#### Example Request
+```json
+{
+  "name": "Wireless Ergonomic Mouse",
+  "code": "PRD-WEM-011",
+  "price": 799.00,
+  "tax_percentage": 18.00,
+  "stock_quantity": 30
+}
+```
+
+#### Successful Response (HTTP 201 Created)
+```json
+{
+  "success": true,
+  "message": "Product created successfully",
+  "data": {
+    "id": 11,
+    "name": "Wireless Ergonomic Mouse",
+    "code": "PRD-WEM-011",
+    "price": "799.00",
+    "tax_percentage": "18.00",
+    "stock_quantity": 30,
+    "created_at": "2026-10-30T11:45:00.000000Z",
+    "updated_at": "2026-10-30T11:45:00.000000Z"
+  }
+}
+```
+
+---
+
+### 5. Product Catalog Listing
 Returns all products ordered alphabetically by name for POS selection.
 
 - **Method**: `GET`
