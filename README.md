@@ -481,7 +481,39 @@ Creates a new product with its SKU code, price, tax percentage, and initial stor
 
 ---
 
-### 5. Product Catalog Listing
+### 5. Maintain Stock Quantity (Restock / Adjust)
+Updates the available stock level for an existing product (e.g. upon receiving new shipment).
+
+- **Method**: `PATCH`
+- **Endpoint**: `/api/products/{id}/stock`
+- **Headers**: `Content-Type: application/json`, `Accept: application/json`
+
+#### Example Request
+```json
+{
+  "stock_quantity": 50
+}
+```
+
+#### Successful Response (HTTP 200 OK)
+```json
+{
+  "success": true,
+  "message": "Stock quantity updated successfully",
+  "data": {
+    "id": 1,
+    "name": "Wireless Optical Mouse",
+    "code": "PRD-MOU-001",
+    "price": "599.00",
+    "tax_percentage": "18.00",
+    "stock_quantity": 50
+  }
+}
+```
+
+---
+
+### 6. Product Catalog Listing
 Returns all products ordered alphabetically by name for POS selection.
 
 - **Method**: `GET`

@@ -10,3 +10,4 @@ Route::get('/customers/orders', [CustomerOrderController::class, 'index']);
 Route::get('/products/low-stock', [ProductController::class, 'lowStock']);
 Route::get('/products', [ProductController::class, 'index']);
 Route::post('/products', [ProductController::class, 'store']);
+Route::patch('/products/{product}/stock', [ProductController::class, 'updateStock']);

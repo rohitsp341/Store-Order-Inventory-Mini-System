@@ -202,6 +202,7 @@
                                     <th class="text-end">Tax Rate</th>
                                     <th class="text-center">Stock Available</th>
                                     <th class="text-center">Status</th>
+                                    <th class="text-center">Maintain Stock</th>
                                 </tr>
                             </thead>
                             <tbody id="inventoryTableBody">
@@ -220,6 +221,11 @@
                                             @else
                                                 <span class="badge badge-in-stock px-2 py-1">In Stock</span>
                                             @endif
+                                        </td>
+                                        <td class="text-center">
+                                            <button class="btn btn-sm btn-outline-secondary" onclick="openStockModal({{ $product->id }}, '{{ addslashes($product->name) }}', {{ $product->stock_quantity }})">
+                                                <i class="bi bi-pencil-square me-1"></i> Adjust
+                                            </button>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -293,6 +299,30 @@
                     <button type="button" class="btn btn-primary" id="saveProductBtn">
                         <i class="bi bi-save me-1"></i> Save Product
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="adjustStockModal" tabindex="-1" aria-labelledby="adjustStockModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title fw-bold" id="adjustStockModalLabel">
+                        <i class="bi bi-sliders me-2 text-primary"></i>Maintain Stock
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="adjustStockAlert" class="alert alert-danger d-none" role="alert"></div>
+                    <input type="hidden" id="adjustStockProdId">
+                    <p class="mb-2"><strong id="adjustStockProdName"></strong></p>
+                    <label class="form-label fw-semibold small">Stock Quantity <span class="text-danger">*</span></label>
+                    <input type="number" id="adjustStockQty" class="form-control" min="0" required>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">Cancel</button>
+                    <button type="button" class="btn btn-primary btn-sm" id="saveStockBtn">Update Stock</button>
                 </div>
             </div>
         </div>
@@ -522,12 +552,65 @@
                             <td class="text-end">${parseFloat(p.tax_percentage).toFixed(2)}%</td>
                             <td class="text-center fw-bold">${p.stock_quantity}</td>
                             <td class="text-center">${badgeHtml}</td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="openStockModal(${p.id}, '${p.name.replace(/'/g, "\\'")}', ${p.stock_quantity})">
+                                    <i class="bi bi-pencil-square me-1"></i> Adjust
+                                </button>
+                            </td>
                         `;
                         tbody.appendChild(tr);
                     });
                 }
             } catch (e) {}
         }
+
+        function openStockModal(productId, productName, currentStock) {
+            document.getElementById('adjustStockProdId').value = productId;
+            document.getElementById('adjustStockProdName').innerText = productName;
+            document.getElementById('adjustStockQty').value = currentStock;
+            document.getElementById('adjustStockAlert').classList.add('d-none');
+            const modal = new bootstrap.Modal(document.getElementById('adjustStockModal'));
+            modal.show();
+        }
+
+        document.getElementById('saveStockBtn').addEventListener('click', async () => {
+            const productId = document.getElementById('adjustStockProdId').value;
+            const newStock = document.getElementById('adjustStockQty').value;
+            const alertBox = document.getElementById('adjustStockAlert');
+
+            if (newStock === '' || parseInt(newStock, 10) < 0) {
+                alertBox.innerText = 'Please enter a valid non-negative stock quantity.';
+                alertBox.classList.remove('d-none');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/products/${productId}/stock`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({ stock_quantity: parseInt(newStock, 10) })
+                });
+
+                const result = await response.json();
+                if (response.ok && result.success) {
+                    const modalEl = document.getElementById('adjustStockModal');
+                    const modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                    showAlert(`Stock for "${result.data.name}" updated to ${result.data.stock_quantity}.`, 'success');
+                    refreshInventoryData();
+                } else {
+                    alertBox.innerText = result.message || 'Failed to update stock.';
+                    alertBox.classList.remove('d-none');
+                }
+            } catch (e) {
+                alertBox.innerText = 'Error connecting to the server.';
+                alertBox.classList.remove('d-none');
+            }
+        });
 
         document.getElementById('autoGenCodeBtn').addEventListener('click', () => {
             const randomCode = 'PRD-' + Math.floor(10000 + Math.random() * 90000);
@@ -610,7 +693,7 @@
                     const tbody = document.getElementById('inventoryTableBody');
                     tbody.innerHTML = '';
                     if (result.data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted py-4">No products below the specified threshold.</td></tr>';
+                        tbody.innerHTML = '<tr><td colspan="7" class="text-center text-muted py-4">No products below the specified threshold.</td></tr>';
                         return;
                     }
                     result.data.forEach(p => {
@@ -627,6 +710,11 @@
                             <td class="text-end">${parseFloat(p.tax_percentage).toFixed(2)}%</td>
                             <td class="text-center fw-bold">${p.stock_quantity}</td>
                             <td class="text-center">${badgeHtml}</td>
+                            <td class="text-center">
+                                <button class="btn btn-sm btn-outline-secondary" onclick="openStockModal(${p.id}, '${p.name.replace(/'/g, "\\'")}', ${p.stock_quantity})">
+                                    <i class="bi bi-pencil-square me-1"></i> Adjust
+                                </button>
+                            </td>
                         `;
                         tbody.appendChild(tr);
                     });
@@ -708,7 +796,7 @@
                     `;
 
                     order.order_items.forEach(item => {
-                        const prodName = item.product ? item.product.name : `Product #${item.product_id}`;\
+                        const prodName = item.product ? item.product.name : `Product #${item.product_id}`;
                         const prodCode = item.product ? `<code>${item.product.code}</code>` : '';
                         html += `
                             <tr>

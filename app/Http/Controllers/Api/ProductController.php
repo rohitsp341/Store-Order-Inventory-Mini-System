@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreProductRequest;
+use App\Http\Requests\UpdateStockRequest;
 use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -31,6 +32,19 @@ class ProductController extends Controller
             'message' => 'Product created successfully',
             'data' => $product,
         ], 201);
+    }
+
+    public function updateStock(UpdateStockRequest $request, Product $product): JsonResponse
+    {
+        $product->update([
+            'stock_quantity' => $request->validated('stock_quantity'),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Stock quantity updated successfully',
+            'data' => $product,
+        ]);
     }
 
     public function lowStock(Request $request): JsonResponse

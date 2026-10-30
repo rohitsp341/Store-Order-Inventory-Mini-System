@@ -41,6 +41,45 @@ class ProductCreationTest extends TestCase
         ]);
     }
 
+    public function test_can_update_product_stock_quantity(): void
+    {
+        $product = Product::factory()->create([
+            'stock_quantity' => 5,
+        ]);
+
+        $response = $this->patchJson("/api/products/{$product->id}/stock", [
+            'stock_quantity' => 40,
+        ]);
+
+        $response->assertStatus(200)
+            ->assertJson([
+                'success' => true,
+                'message' => 'Stock quantity updated successfully',
+                'data' => [
+                    'id' => $product->id,
+                    'stock_quantity' => 40,
+                ],
+            ]);
+
+        $this->assertEquals(40, $product->fresh()->stock_quantity);
+    }
+
+    public function test_rejects_negative_stock_quantity_update(): void
+    {
+        $product = Product::factory()->create([
+            'stock_quantity' => 5,
+        ]);
+
+        $response = $this->patchJson("/api/products/{$product->id}/stock", [
+            'stock_quantity' => -10,
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJson([
+                'success' => false,
+            ]);
+    }
+
     public function test_rejects_duplicate_product_code(): void
     {
         Product::factory()->create([
